@@ -14,6 +14,12 @@ Conversor de `KML -> OBJ/FBX` que:
 - Python 3.10+
 - Autodesk FBX SDK 2020.3.9
 
+Requisitos macOS:
+- macOS 12+ recomendado.
+- Xcode Command Line Tools (incluye `clang++`):
+  - `xcode-select --install`
+- `tar`/`pkgutil` para extraer el SDK si viene en paquete `.pkg/.tar`.
+
 Resolución de SDK:
 - Puedes pasar `--fbxsdk-root PATH`
 - o definir `FBXSDK_ROOT`

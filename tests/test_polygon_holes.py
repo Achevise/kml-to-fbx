@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from kml_to_fbx.mesh_builder import polygon_to_mesh
+from kml_to_obj.mesh_builder import polygon_to_mesh
 
 
 def _tri_area_xy(a, b, c):

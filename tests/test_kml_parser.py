@@ -3,7 +3,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from kml_to_fbx.kml_parser import parse_kml
+from kml_to_obj.kml_parser import parse_kml
 
 
 def test_parse_example_kml():

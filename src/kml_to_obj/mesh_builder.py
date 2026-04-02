@@ -102,6 +102,36 @@ def linestring_to_ribbon_mesh(coords: Sequence[Vec3], width: float) -> MeshData:
     return MeshData(vertices=verts, triangles=tris)
 
 
+def merge_meshes(meshes: Sequence[MeshData]) -> MeshData:
+    verts: List[Vec3] = []
+    tris: List[Tri] = []
+    offset = 0
+    for m in meshes:
+        if not m.vertices or not m.triangles:
+            continue
+        verts.extend(m.vertices)
+        tris.extend((i + offset, j + offset, k + offset) for (i, j, k) in m.triangles)
+        offset += len(m.vertices)
+    return MeshData(vertices=verts, triangles=tris)
+
+
+def polygon_outline_mesh(rings: Sequence[Sequence[Vec3]], width: float) -> MeshData:
+    if width <= 0.0:
+        return MeshData(vertices=[], triangles=[])
+    parts: List[MeshData] = []
+    for ring in rings:
+        r = list(ring)
+        if len(r) < 3:
+            continue
+        if r[0] == r[-1]:
+            r = r[:-1]
+        if len(r) < 3:
+            continue
+        closed = r + [r[0]]
+        parts.append(linestring_to_ribbon_mesh(closed, width))
+    return merge_meshes(parts)
+
+
 def _signed_area_2d(poly: Sequence[Tuple[float, float]]) -> float:
     area = 0.0
     n = len(poly)

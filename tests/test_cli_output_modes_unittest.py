@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from kml_to_fbx.cli import main as cli_main
+from kml_to_obj.cli import main as cli_main
 
 
 class CliOutputModesSuite(unittest.TestCase):
@@ -17,7 +17,7 @@ class CliOutputModesSuite(unittest.TestCase):
     def test_obj_mode_writes_obj_and_mtl(self):
         with tempfile.TemporaryDirectory(prefix="kml_cli_obj_") as tmpdir:
             obj_path = Path(tmpdir) / "scene.obj"
-            rc = cli_main([str(self.sample_kml), str(obj_path), "--output-format", "obj"])
+            rc = cli_main([str(self.sample_kml), str(obj_path)])
             self.assertEqual(0, rc)
 
             mtl_path = obj_path.with_suffix(".mtl")
@@ -33,7 +33,7 @@ class CliOutputModesSuite(unittest.TestCase):
     def test_obj_shared_material_mode_writes_single_material(self):
         with tempfile.TemporaryDirectory(prefix="kml_cli_obj_shared_") as tmpdir:
             obj_path = Path(tmpdir) / "scene.obj"
-            rc = cli_main([str(self.sample_kml), str(obj_path), "--output-format", "obj", "--material-mode", "shared"])
+            rc = cli_main([str(self.sample_kml), str(obj_path), "--material-mode", "shared"])
             self.assertEqual(0, rc)
 
             mtl_path = obj_path.with_suffix(".mtl")
@@ -69,18 +69,10 @@ class CliOutputModesSuite(unittest.TestCase):
             kml_path = Path(tmpdir) / "src.kml"
             kml_path.write_text(kml, encoding="utf-8")
             obj_path = Path(tmpdir) / "scene.obj"
-            rc = cli_main([str(kml_path), str(obj_path), "--output-format", "obj", "--material-mode", "source"])
+            rc = cli_main([str(kml_path), str(obj_path), "--material-mode", "source"])
             self.assertEqual(0, rc)
             mtl_text = obj_path.with_suffix(".mtl").read_text(encoding="utf-8")
             self.assertEqual(1, sum(1 for ln in mtl_text.splitlines() if ln.startswith("newmtl ")))
-
-    def test_fbx_sdk_mode_writes_binary_fbx(self):
-        with tempfile.TemporaryDirectory(prefix="kml_cli_fbxsdk_") as tmpdir:
-            fbx_path = Path(tmpdir) / "scene_fbxsdk.fbx"
-            rc = cli_main([str(self.sample_kml), str(fbx_path), "--output-format", "fbx-sdk"])
-            self.assertEqual(0, rc)
-            header = fbx_path.read_bytes()[:32]
-            self.assertTrue(header.startswith(b"Kaydara FBX Binary  "))
 
     def test_partition_level_splits_files_by_hierarchy(self):
         nested_kml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -108,7 +100,7 @@ class CliOutputModesSuite(unittest.TestCase):
             kml_path.write_text(nested_kml, encoding="utf-8")
 
             out_base = Path(tmpdir) / "scene.obj"
-            rc = cli_main([str(kml_path), str(out_base), "--output-format", "obj", "--partition-level", "2"])
+            rc = cli_main([str(kml_path), str(out_base), "--partition-level", "2"])
             self.assertEqual(0, rc)
 
             out1 = Path(tmpdir) / "scene__US_Colorado.obj"
@@ -148,7 +140,7 @@ class CliOutputModesSuite(unittest.TestCase):
             kml_path.write_text(line_kml, encoding="utf-8")
 
             obj_no = Path(tmpdir) / "line_no.obj"
-            rc_no = cli_main([str(kml_path), str(obj_no), "--output-format", "obj"])
+            rc_no = cli_main([str(kml_path), str(obj_no)])
             self.assertEqual(0, rc_no)
 
             obj_dec = Path(tmpdir) / "line_dec.obj"
@@ -156,8 +148,6 @@ class CliOutputModesSuite(unittest.TestCase):
                 [
                     str(kml_path),
                     str(obj_dec),
-                    "--output-format",
-                    "obj",
                     "--decimate-tolerance",
                     "5.0",
                 ]
@@ -167,6 +157,37 @@ class CliOutputModesSuite(unittest.TestCase):
             v_no = sum(1 for ln in obj_no.read_text(encoding="utf-8").splitlines() if ln.startswith("v "))
             v_dec = sum(1 for ln in obj_dec.read_text(encoding="utf-8").splitlines() if ln.startswith("v "))
             self.assertLess(v_dec, v_no)
+
+    def test_polygon_outline_width_adds_geometry(self):
+        poly_kml = """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>P</name>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>
+        -3.0,40.0,0 -2.9,40.0,0 -2.9,40.1,0 -3.0,40.1,0 -3.0,40.0,0
+      </coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>
+  </Document>
+</kml>"""
+        with tempfile.TemporaryDirectory(prefix="kml_cli_outline_") as tmpdir:
+            kml_path = Path(tmpdir) / "poly.kml"
+            kml_path.write_text(poly_kml, encoding="utf-8")
+
+            obj_no = Path(tmpdir) / "poly_no.obj"
+            rc_no = cli_main([str(kml_path), str(obj_no)])
+            self.assertEqual(0, rc_no)
+
+            obj_ol = Path(tmpdir) / "poly_ol.obj"
+            rc_ol = cli_main([str(kml_path), str(obj_ol), "--polygon-outline-width", "5.0"])
+            self.assertEqual(0, rc_ol)
+
+            v_no = sum(1 for ln in obj_no.read_text(encoding="utf-8").splitlines() if ln.startswith("v "))
+            ol_text = obj_ol.read_text(encoding="utf-8")
+            v_ol = sum(1 for ln in ol_text.splitlines() if ln.startswith("v "))
+            self.assertGreater(v_ol, v_no)
+            self.assertIn("o P", ol_text)
+            self.assertIn("o P_Outline", ol_text)
 
     def test_polygon_front_normalization_up_and_down(self):
         poly_kml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -191,7 +212,7 @@ class CliOutputModesSuite(unittest.TestCase):
             kml_path.write_text(poly_kml, encoding="utf-8")
 
             up_obj = Path(tmpdir) / "up.obj"
-            rc_up = cli_main([str(kml_path), str(up_obj), "--output-format", "obj", "--polygon-front", "up"])
+            rc_up = cli_main([str(kml_path), str(up_obj), "--polygon-front", "up"])
             self.assertEqual(0, rc_up)
             up_normals = [
                 float(ln.split()[2])
@@ -202,7 +223,7 @@ class CliOutputModesSuite(unittest.TestCase):
             self.assertTrue(all(ny > 0.0 for ny in up_normals))
 
             down_obj = Path(tmpdir) / "down.obj"
-            rc_down = cli_main([str(kml_path), str(down_obj), "--output-format", "obj", "--polygon-front", "down"])
+            rc_down = cli_main([str(kml_path), str(down_obj), "--polygon-front", "down"])
             self.assertEqual(0, rc_down)
             down_normals = [
                 float(ln.split()[2])
@@ -222,6 +243,35 @@ class CliOutputModesSuite(unittest.TestCase):
         self.assertIn("Objects (Placemark):", out)
         self.assertIn("Shape types:", out)
         self.assertIn("Materials / styles:", out)
+
+    def test_generates_out_py_geoid_map(self):
+        kml = """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>US</name>
+    <Placemark>
+      <name>Adams</name>
+      <ExtendedData><SchemaData>
+        <SimpleData name="GEOID">08001</SimpleData>
+      </SchemaData></ExtendedData>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>
+        -3.0,40.0,0 -2.9,40.0,0 -2.9,40.1,0 -3.0,40.1,0 -3.0,40.0,0
+      </coordinates></LinearRing></outerBoundaryIs></Polygon>
+    </Placemark>
+  </Document>
+</kml>"""
+        with tempfile.TemporaryDirectory(prefix="kml_cli_outpy_") as tmpdir:
+            kml_path = Path(tmpdir) / "geoid.kml"
+            kml_path.write_text(kml, encoding="utf-8")
+            obj_path = Path(tmpdir) / "scene.obj"
+            rc = cli_main([str(kml_path), str(obj_path)])
+            self.assertEqual(0, rc)
+
+            out_py = Path(tmpdir) / "scene.py"
+            self.assertTrue(out_py.exists())
+            text = out_py.read_text(encoding="utf-8")
+            self.assertIn('GEOID_TO_OBJECT = {', text)
+            self.assertIn('"08001": "US_08001_Adams"', text)
 
 
 if __name__ == "__main__":

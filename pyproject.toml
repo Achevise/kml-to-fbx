@@ -3,15 +3,15 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kml-to-fbx"
+name = "kml-to-obj"
 version = "0.1.0"
-description = "Convert KML shapes to FBX preserving names and per-shape materials"
+description = "Convert KML shapes to OBJ preserving names and materials"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-kml2fbx = "kml_to_fbx.cli:main"
+kml2obj = "kml_to_obj.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

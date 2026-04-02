@@ -4,9 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from kml_to_fbx.fbx_writer import FbxMeshObject, write_ascii_fbx
-from kml_to_fbx.kml_parser import parse_kml
-from kml_to_fbx.mesh_builder import MeshData, linestring_to_ribbon_mesh, polygon_to_mesh
+from kml_to_obj.kml_parser import parse_kml
+from kml_to_obj.mesh_builder import MeshData, linestring_to_ribbon_mesh, polygon_to_mesh
 
 
 def _tri_area_xy(a, b, c):
@@ -153,25 +152,6 @@ class EdgeCaseSuite(unittest.TestCase):
         mesh = linestring_to_ribbon_mesh(coords, width=1.0)
         self.assertEqual(6, len(mesh.vertices))
         self.assertEqual(4, len(mesh.triangles))
-
-    def test_fbx_writer_skips_empty_mesh_objects(self):
-        with tempfile.TemporaryDirectory(prefix="fbx_test_") as tmpdir:
-            out = Path(tmpdir) / "out.fbx"
-            write_ascii_fbx(
-                str(out),
-                [
-                    FbxMeshObject(name="Empty", mesh=MeshData(vertices=[], triangles=[]), rgba=(1, 1, 1, 1)),
-                    FbxMeshObject(
-                        name="Valid",
-                        mesh=MeshData(vertices=[(0, 0, 0), (1, 0, 0), (0, 1, 0)], triangles=[(0, 1, 2)]),
-                        rgba=(0.2, 0.4, 0.6, 1.0),
-                    ),
-                ],
-            )
-            text = out.read_text(encoding="utf-8")
-            self.assertIn("Geometry::Valid", text)
-            self.assertNotIn("Geometry::Empty", text)
-
 
 if __name__ == "__main__":
     unittest.main()

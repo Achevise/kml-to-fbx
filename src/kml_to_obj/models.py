@@ -22,6 +22,7 @@ class Shape:
     coordinates: object
     rgba: RGBAlpha
     material_source: str = ""
+    geoid: str = ""
 
 
 @dataclass

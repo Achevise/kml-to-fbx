@@ -1,176 +1,88 @@
-# KML to FBX
+# KMLto OBJ
 
-Conversor de `KML -> OBJ/FBX` que:
+Conversor de `KML -> OBJ` que:
 
 - Extrae `Placemark` con `Point`, `LineString`, `Polygon` y `MultiGeometry`.
 - Conserva nombres jerárquicos: `padre_hijo_nieto_...`.
-- Si existe `GEOID` en el KML, el nivel de objeto usa `GEOID_NOMBRE` para evitar colisiones.
-- Asigna material individual por shape.
+- Si existe `GEOID` en el KML, usa `GEOID_NOMBRE` para evitar colisiones.
+- Soporta materiales por shape, por estilo de origen o material compartido.
 - Soporta particionado por nivel de jerarquía.
-- Exporta FBX con Autodesk FBX SDK (`fbx-sdk`).
 
 ## Requisitos
 
 - Python 3.10+
-- Autodesk FBX SDK 2020.3.9
 
-Requisitos macOS:
-- macOS 12+ recomendado.
-- Xcode Command Line Tools (incluye `clang++`):
-  - `xcode-select --install`
-- `tar`/`pkgutil` para extraer el SDK si viene en paquete `.pkg/.tar`.
-
-Resolución de SDK:
-- Puedes pasar `--fbxsdk-root PATH`
-- o definir `FBXSDK_ROOT`
-- en macOS, por defecto usa `tools/fbxsdk/pkg_expanded/.../FBX SDK/2020.3.9` si existe.
-
-Notas Windows:
-- El exportador FBX SDK usa `tools/fbxsdk/bin/fbxsdk_exporter.exe`.
-- En Windows no se autocompila por ahora desde Python: compílalo con:
-  - `tools\fbxsdk\build_fbxsdk_exporter_windows.bat`
-  - opcionalmente define `FBXSDK_ROOT`.
-- Luego puedes usar `--fbxsdk-exporter-bin` si quieres una ruta concreta.
-
-## Instalación del proyecto
+## Instalación en macOS
 
 ```bash
-python -m pip install -e .
-```
-
-### Instalación en macOS
-
-1. Clonar repositorio:
-```bash
-git clone https://github.com/Achevise/kml-to-fbx.git
-cd kml-to-fbx
-```
-
-2. Crear entorno virtual e instalar:
-```bash
+git clone https://github.com/Achevise/kml-to-obj.git
+cd kml-to-obj
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-3. FBX SDK (si vas a exportar `fbx-sdk`):
-- Define `FBXSDK_ROOT` o usa `--fbxsdk-root`.
-- Si tienes el paquete SDK local del proyecto, extrae en `tools/fbxsdk/...` según estructura esperada.
+## Instalación en Windows
 
-### Instalación en Windows
-
-1. Clonar repositorio:
 ```powershell
-git clone https://github.com/Achevise/kml-to-fbx.git
-cd kml-to-fbx
-```
-
-2. Crear entorno virtual e instalar:
-```powershell
+git clone https://github.com/Achevise/kml-to-obj.git
+cd kml-to-obj
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-3. FBX SDK (si vas a exportar `fbx-sdk`):
-- Instala Autodesk FBX SDK 2020.3.9.
-- Opcionalmente define:
-```powershell
-$env:FBXSDK_ROOT="C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.9"
-```
-- Compila exportador:
-```powershell
-tools\fbxsdk\build_fbxsdk_exporter_windows.bat
-```
-
 ## Uso
 
-Generar `.obj`:
+Generar OBJ:
 
 ```bash
-kml2fbx samples/example.kml out/example.obj --output-format obj
+kml2obj samples/example.kml out/example.obj
 ```
 
-Generar `.fbx` con FBX SDK:
+Inspeccionar estructura del KML sin exportar:
 
 ```bash
-kml2fbx samples/example.kml out/example_sdk.fbx --output-format fbx-sdk
+kml2obj samples/example.kml --inspect-kml
 ```
 
-Opciones útiles:
+Además, en cada exportación se genera un fichero `.py` con el mismo nombre base que el OBJ (por ejemplo `scene.obj -> scene.py`) con:
 
-```bash
-kml2fbx input.kml output.fbx --output-format fbx-sdk --polygon-height 30
-kml2fbx input.kml output.fbx --output-format fbx-sdk --partition-level 2
-kml2fbx input.kml output.obj --output-format obj --material-mode shared
+```python
+GEOID_TO_OBJECT = {
+    "08001": "US_08001_Adams",
+    ...
+}
 ```
 
-Particionado por nivel (`all`, `1`, `2`, `3`, ...):
+## Opciones CLI
 
-```bash
-# Todo en un solo fichero
-kml2fbx input.kml out/scene.fbx --output-format fbx-sdk --partition-level all
-
-# Un fichero por segundo nivel
-kml2fbx input.kml out/scene.fbx --output-format fbx-sdk --partition-level 2
+```text
+kml2obj INPUT_KML OUTPUT_PATH [opciones]
+kml2obj INPUT_KML --inspect-kml
 ```
 
-Cuando se particiona, los archivos salen como:
-`scene__nivel1_nivel2....ext`
-
-## Opciones CLI (completas)
-
-```
-kml2fbx INPUT_KML OUTPUT_PATH [opciones]
-```
-
-Para inspeccionar el KML sin exportar:
-
-```
-kml2fbx INPUT_KML --inspect-kml
-```
-
-- `INPUT_KML`:
-  ruta del KML de entrada.
-- `OUTPUT_PATH`:
-  ruta base de salida (`.obj` o `.fbx` según `--output-format`). No se usa con `--inspect-kml`.
-- `--output-format {obj,fbx-sdk}`:
-  formato de salida. Por defecto: `fbx-sdk`.
+- `INPUT_KML`: ruta del KML de entrada.
+- `OUTPUT_PATH`: ruta base de salida `.obj`.
 - `--material-mode {per-shape,source,shared}`:
-  `per-shape` crea material por shape; `source` preserva agrupación de material según estilo original del KML (modo por defecto); `shared` usa un único material en todo el archivo.
-- `--partition-level all|N`:
-  `all` genera un único fichero; `N` (1,2,3,...) genera un fichero por rama de jerarquía hasta ese nivel.
-- `--point-radius FLOAT`:
-  radio (m) de representación para `Point`. Por defecto: `1.0`.
-- `--line-width FLOAT`:
-  grosor (m) de representación para `LineString`. Por defecto: `0.2`.
-- `--polygon-height FLOAT`:
-  extrusión (m) para `Polygon`. `0` = sin extrusión. Por defecto: `0.0`.
-- `--polygon-front {up,down,keep}`:
-  orientación de caras frontales para polígonos no extruidos. Por defecto: `up`.
-- `--decimate-tolerance FLOAT`:
-  simplificación geométrica en metros para `LineString` y `Polygon` (en plano XZ local). `0` desactiva. Por defecto: `0.0`.
-- `--flip-winding`:
-  invierte winding de todos los triángulos.
-- `--fbxsdk-exporter-bin PATH`:
-  ruta explícita al binario `fbxsdk_exporter` (solo `fbx-sdk`).
-- `--fbxsdk-root PATH`:
-  ruta raíz del Autodesk FBX SDK extraído (solo `fbx-sdk`).
-- `--inspect-kml`:
-  imprime un informe del KML origen (objetos, shapes, tipos, jerarquía, estilos/materiales) y termina sin exportar.
-
-## Notas
-
-- Coordenadas `lon/lat/alt` -> sistema local en metros.
-- `Point` -> octaedro.
-- `LineString` -> ribbon.
-- `Polygon` -> triangulación ear clipping con soporte de huecos.
-- `--polygon-height` extruye polígonos para mejorar visibilidad.
+  - `per-shape`: material por shape.
+  - `source`: agrupa material según estilo original del KML (por defecto).
+  - `shared`: un único material para todo el archivo.
+- `--partition-level all|N`: `all` un solo fichero, `N` un fichero por rama de jerarquía a ese nivel.
+- `--point-radius FLOAT`: radio (m) para `Point`.
+- `--line-width FLOAT`: grosor (m) para `LineString`.
+- `--polygon-height FLOAT`: extrusión (m) para `Polygon`.
+- `--polygon-outline-width FLOAT`: grosor (m) del contorno de anillos de `Polygon` (`0` desactiva).
+  - El outline se exporta como objeto independiente con sufijo `_Outline`.
+- `--polygon-front {up,down,keep}`: dirección de frente para polígonos no extruidos.
+- `--decimate-tolerance FLOAT`: simplificación geométrica en metros (`0` desactiva).
+- `--flip-winding`: invierte winding de triángulos.
+- `--inspect-kml`: imprime informe del KML y termina.
 
 ## Tests
 
 ```bash
-PYTHONPATH=src python3 -m unittest -v tests/test_kml_parser.py tests/test_cli_output_modes_unittest.py tests/test_edge_cases_unittest.py tests/test_fbx_writer.py
+PYTHONPATH=src python3 -m unittest -v tests/test_kml_parser.py tests/test_cli_output_modes_unittest.py tests/test_edge_cases_unittest.py
 ```

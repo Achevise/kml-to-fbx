@@ -117,6 +117,7 @@ def _add_point_shapes(
     geom_node: ET.Element,
     rgba: RGBAlpha,
     material_source: str,
+    geoid: str,
 ) -> None:
     coord_el = geom_node.find("kml:coordinates", KML_NS)
     if coord_el is None or not coord_el.text:
@@ -132,6 +133,7 @@ def _add_point_shapes(
             coordinates=[coords[0]],
             rgba=rgba,
             material_source=material_source,
+            geoid=geoid,
         )
     )
 
@@ -143,6 +145,7 @@ def _add_linestring_shapes(
     geom_node: ET.Element,
     rgba: RGBAlpha,
     material_source: str,
+    geoid: str,
 ) -> None:
     coord_el = geom_node.find("kml:coordinates", KML_NS)
     if coord_el is None or not coord_el.text:
@@ -158,6 +161,7 @@ def _add_linestring_shapes(
             coordinates=coords,
             rgba=rgba,
             material_source=material_source,
+            geoid=geoid,
         )
     )
 
@@ -169,6 +173,7 @@ def _add_polygon_shapes(
     geom_node: ET.Element,
     rgba: RGBAlpha,
     material_source: str,
+    geoid: str,
 ) -> None:
     rings: List[List[Tuple[float, float, float]]] = []
 
@@ -193,6 +198,7 @@ def _add_polygon_shapes(
                 coordinates=rings,
                 rgba=rgba,
                 material_source=material_source,
+                geoid=geoid,
             )
         )
 
@@ -251,28 +257,28 @@ def _extract_shapes_from_placemark(
         if geom is None:
             continue
         if gtype == "Point":
-            _add_point_shapes(shapes, base_name, hierarchy, geom, rgba, material_source)
+            _add_point_shapes(shapes, base_name, hierarchy, geom, rgba, material_source, geoid)
         elif gtype == "LineString":
-            _add_linestring_shapes(shapes, base_name, hierarchy, geom, rgba, material_source)
+            _add_linestring_shapes(shapes, base_name, hierarchy, geom, rgba, material_source, geoid)
         elif gtype == "Polygon":
-            _add_polygon_shapes(shapes, base_name, hierarchy, geom, rgba, material_source)
+            _add_polygon_shapes(shapes, base_name, hierarchy, geom, rgba, material_source, geoid)
 
     mgeo = placemark.find("kml:MultiGeometry", KML_NS)
     if mgeo is not None:
         sub_index = 1
         for point in mgeo.findall("kml:Point", KML_NS):
             name = f"{base_name}_{sub_index}"
-            _add_point_shapes(shapes, name, hierarchy, point, rgba, material_source)
+            _add_point_shapes(shapes, name, hierarchy, point, rgba, material_source, geoid)
             if shapes and shapes[-1].name == name:
                 sub_index += 1
         for line in mgeo.findall("kml:LineString", KML_NS):
             name = f"{base_name}_{sub_index}"
-            _add_linestring_shapes(shapes, name, hierarchy, line, rgba, material_source)
+            _add_linestring_shapes(shapes, name, hierarchy, line, rgba, material_source, geoid)
             if shapes and shapes[-1].name == name:
                 sub_index += 1
         for poly in mgeo.findall("kml:Polygon", KML_NS):
             name = f"{base_name}_{sub_index}"
-            _add_polygon_shapes(shapes, name, hierarchy, poly, rgba, material_source)
+            _add_polygon_shapes(shapes, name, hierarchy, poly, rgba, material_source, geoid)
             if shapes and shapes[-1].name == name:
                 sub_index += 1
 

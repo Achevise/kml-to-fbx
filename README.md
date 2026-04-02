@@ -32,6 +32,53 @@ Notas Windows:
 python -m pip install -e .
 ```
 
+### Instalación en macOS
+
+1. Clonar repositorio:
+```bash
+git clone https://github.com/Achevise/kml-to-fbx.git
+cd kml-to-fbx
+```
+
+2. Crear entorno virtual e instalar:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+3. FBX SDK (si vas a exportar `fbx-sdk`):
+- Define `FBXSDK_ROOT` o usa `--fbxsdk-root`.
+- Si tienes el paquete SDK local del proyecto, extrae en `tools/fbxsdk/...` según estructura esperada.
+
+### Instalación en Windows
+
+1. Clonar repositorio:
+```powershell
+git clone https://github.com/Achevise/kml-to-fbx.git
+cd kml-to-fbx
+```
+
+2. Crear entorno virtual e instalar:
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+3. FBX SDK (si vas a exportar `fbx-sdk`):
+- Instala Autodesk FBX SDK 2020.3.9.
+- Opcionalmente define:
+```powershell
+$env:FBXSDK_ROOT="C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.9"
+```
+- Compila exportador:
+```powershell
+tools\fbxsdk\build_fbxsdk_exporter_windows.bat
+```
+
 ## Uso
 
 Generar `.obj`:

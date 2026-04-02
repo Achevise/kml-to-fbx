@@ -371,12 +371,22 @@ def _polygon_bbox_size(rings, up_axis: str) -> float:
     return max(0.0, size)
 
 
-def _resolve_outline_width(spec, rings, up_axis: str) -> float:
-    bbox_size = _polygon_bbox_size(rings, up_axis)
+def _max_polygon_bbox_size(projected_shapes, up_axis: str) -> float:
+    max_size = 0.0
+    for item in projected_shapes:
+        if item.get("geometry_type") != "Polygon":
+            continue
+        bbox_size = _polygon_bbox_size(item.get("coordinates") or [], up_axis)
+        if bbox_size > max_size:
+            max_size = bbox_size
+    return max_size
+
+
+def _resolve_outline_width(spec, global_bbox_size: float) -> float:
     if spec == OUTLINE_AUTO:
-        return bbox_size * OUTLINE_AUTO_RATIO
+        return global_bbox_size * OUTLINE_AUTO_RATIO
     if isinstance(spec, tuple) and len(spec) == 2 and spec[0] == OUTLINE_PERCENT:
-        return bbox_size * spec[1]
+        return global_bbox_size * spec[1]
     return float(spec)
 
 
@@ -517,6 +527,8 @@ def main(argv: List[str] | None = None) -> int:
             }
         )
 
+    global_outline_bbox_size = _max_polygon_bbox_size(projected, up_axis=args.up_axis)
+
     grouped: Dict[Tuple[str, ...], List[ObjMeshObject]] = defaultdict(list)
     skipped = 0
     for item in projected:
@@ -557,7 +569,7 @@ def main(argv: List[str] | None = None) -> int:
             generated_any = True
 
         if item["geometry_type"] == "Polygon" and args.polygon_render_mode in ("outline", "polygon+outline"):
-            outline_width = _resolve_outline_width(args.polygon_outline_width, item["coordinates"], up_axis=args.up_axis)
+            outline_width = _resolve_outline_width(args.polygon_outline_width, global_outline_bbox_size)
             outline = polygon_outline_mesh_axis(item["coordinates"], outline_width, up_axis=args.up_axis)
             if args.flip_winding:
                 outline = flip_mesh_winding(outline)

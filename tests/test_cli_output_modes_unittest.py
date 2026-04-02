@@ -6,7 +6,13 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from kml_to_obj.cli import main as cli_main
+from kml_to_obj.cli import (
+    OUTLINE_AUTO,
+    OUTLINE_PERCENT,
+    _max_polygon_bbox_size,
+    _resolve_outline_width,
+    main as cli_main,
+)
 
 
 class CliOutputModesSuite(unittest.TestCase):
@@ -293,6 +299,26 @@ class CliOutputModesSuite(unittest.TestCase):
             self.assertIn("o P_Outline", text)
             self.assertNotIn("o P\n", text)
             self.assertGreater(sum(1 for ln in text.splitlines() if ln.startswith("f ")), 0)
+
+    def test_outline_auto_and_percent_use_global_bbox_reference(self):
+        projected = [
+            {
+                "geometry_type": "Polygon",
+                "coordinates": [[(0.0, 0.0, 0.0), (10.0, 0.0, 0.0), (10.0, 8.0, 0.0), (0.0, 8.0, 0.0), (0.0, 0.0, 0.0)]],
+            },
+            {
+                "geometry_type": "Polygon",
+                "coordinates": [[(0.0, 0.0, 0.0), (20.0, 0.0, 0.0), (20.0, 4.0, 0.0), (0.0, 4.0, 0.0), (0.0, 0.0, 0.0)]],
+            },
+            {
+                "geometry_type": "LineString",
+                "coordinates": [(0.0, 0.0, 0.0), (5.0, 0.0, 0.0)],
+            },
+        ]
+        ref = _max_polygon_bbox_size(projected, up_axis="z")
+        self.assertEqual(20.0, ref)
+        self.assertAlmostEqual(1.0, _resolve_outline_width(OUTLINE_AUTO, ref))
+        self.assertAlmostEqual(2.0, _resolve_outline_width((OUTLINE_PERCENT, 0.1), ref))
 
     def test_polygon_front_normalization_up_and_down(self):
         poly_kml = """<?xml version="1.0" encoding="UTF-8"?>
